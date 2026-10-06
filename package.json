@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build:client": "node client/build.mjs",
+    "pretest": "node client/build.mjs",
     "release": "semantic-release",
     "test": "node --test --test-timeout=30000 \"test/*.test.js\""
   },

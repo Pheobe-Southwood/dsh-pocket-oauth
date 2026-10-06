@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolveLayout, persistLayoutFromUrl, readStoredLayout } from '../client/mobile/layout-mode.mjs';
+import { resolveLayout, persistLayoutFromUrl } from '../client/mobile/layout-mode.mjs';
 
 test('resolveLayout: URL desktop 优先于一切', () => {
   assert.equal(resolveLayout({ urlValue: 'desktop', stored: 'mobile', narrowMatch: true }), 'desktop');

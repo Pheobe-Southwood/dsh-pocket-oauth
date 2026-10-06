@@ -174,3 +174,30 @@ test('更新机制（GitHub 化）：版本检查只打本仓库 main，不再�
   assert.ok(src.includes('copyContext'), '「复制排障上下文」入口已进产物');
   assert.ok(src.includes('execCommand'), '非安全上下文剪贴板兜底已进产物（设置页复制不再静默失败）');
 });
+
+test('产物同步：client/client.js 必须与源码构建结果逐字节一致（否则测试在验旧产物）', async () => {
+  // 本仓库把 esbuild 产物纳入版本控制，而下面若干测试直接读它断言行为——
+  // 源码改了却没重建时，那些测试会对着旧产物「全绿」，形成假信心。
+  // 这里把产物构建到临时目录再比对，保证测的永远是当前源码。
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { readFile } = await import('node:fs/promises');
+  const { fileURLToPath } = await import('node:url');
+  const tmpDir = await mkdtemp(join(tmpdir(), 'dsh-pocket-build-'));
+  const out = join(tmpDir, 'client.js');
+  const committed = new URL('../client/client.js', import.meta.url);
+  try {
+    await promisify(execFile)(process.execPath, ['client/build.mjs'], {
+      cwd: fileURLToPath(new URL('..', import.meta.url)),
+      env: { ...process.env, DSH_POCKET_CLIENT_OUT: out },
+      timeout: 60_000,
+    });
+    const [fresh, onDisk] = await Promise.all([readFile(out), readFile(committed)]);
+    assert.ok(
+      fresh.equals(onDisk),
+      'client/client.js 与源码不同步——先跑 npm run build:client（npm test 的 pretest 会自动跑）',
+    );
+  } finally {
+    await rm(tmpDir, { recursive: true, force: true });
+  }
+});

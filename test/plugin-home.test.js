@@ -120,3 +120,31 @@ test('plugin entry wires oauth.rotateSession / oauth.unbind / pocket.reset to re
 
   await entry.dispose();
 });
+
+// 回归（plugin 入口接线）：设置页「手机端右边栏」开关必须真的读写 settings.json。
+// 旧实现只给 RPC 传了 setter、没传 reader，status 恒为 true，开关点了必报「不可用」。
+test('plugin entry wires mobile.rightbar.setEnabled to the real settings file', async (t) => {
+  const f = await fixture(t);
+  const entry = f.mount({});
+  await entry.ready();
+
+  const s0 = await entry.call(POCKET_ENDPOINTS.status, {});
+  assert.equal(s0.value.mobileRightbarEnabled, true, '未配置时默认开启');
+
+  const off = await entry.call(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on: false });
+  assert.equal(off.ok, true, '开关可用（不是 bad-request）');
+  assert.equal(off.value.mobileRightbarEnabled, false);
+
+  const { settingsPath, mobileRightbarEnabled } = await import('../lib/settings.mjs');
+  const { readFileSync } = await import('node:fs');
+  assert.equal(JSON.parse(readFileSync(settingsPath(), 'utf8')).mobileRightbarEnabled, false, '已落盘');
+  assert.equal(mobileRightbarEnabled(), false);
+
+  const s1 = await entry.call(POCKET_ENDPOINTS.status, {});
+  assert.equal(s1.value.mobileRightbarEnabled, false, 'status 读回真实设置');
+
+  const on = await entry.call(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on: true });
+  assert.equal(on.value.mobileRightbarEnabled, true, '可再次开启');
+
+  await entry.dispose();
+});

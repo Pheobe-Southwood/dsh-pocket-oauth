@@ -8,7 +8,7 @@
 
 import { createElement as h, useEffect, useRef, useState } from 'react';
 
-import { POCKET_RPC_CHANNEL, POCKET_ENDPOINTS, MOBILE_RIGHTBAR_ATTRIBUTE, MOBILE_RIGHTBAR_EVENT, redactStatus, compareVersions, fallbackKind, copyText, buildTroubleshootingContext } from './api.js';
+import { POCKET_RPC_CHANNEL, POCKET_ENDPOINTS, MOBILE_RIGHTBAR_ATTRIBUTE, MOBILE_RIGHTBAR_EVENT, compareVersions, fallbackKind, copyText, buildTroubleshootingContext } from './api.js';
 import { mobileApply } from './mobile/mobile-apply.tsx';
 import { NS as POCKET_NS, zh as POCKET_ZH, en as POCKET_EN } from './pocket-locales.js';
 
@@ -185,25 +185,6 @@ function PocketSettingsTab({ rpcCall, t }) {
     }
   };
 
-  // 恢复出厂设置：清设置 + 清 OAuth 配置（弹窗确认；RPC 端也强制校验 confirm）
-  const [resetOpen, setResetOpen] = useState(false);
-  const doFactoryReset = async () => {
-    setResetOpen(false);
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await call(POCKET_ENDPOINTS.pocketReset, { confirm: true });
-      setStatus(next);
-      applyMobileRightbarSetting(next.mobileRightbarEnabled);
-      showToast(t('resetDone'));
-    } catch (err) {
-      setError(err.message);
-      showToast(t('resetFailed'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const setMobileRightbar = async (on) => {
     try {
       const r = await call(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on });
@@ -259,13 +240,30 @@ function PocketSettingsTab({ rpcCall, t }) {
   };
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // 通用确认弹框（登出所有设备 / 解除绑定共用）
+  // 通用确认弹框（恢复出厂 / 登出所有设备 / 解除绑定共用）
   const [confirmState, setConfirmState] = useState(null); // { title, body, confirmLabel, danger, action } | null
   const openConfirm = (title, body, confirmLabel, danger, action) => setConfirmState({ title, body, confirmLabel, danger, action });
   const runConfirmed = async () => {
     const st = confirmState;
     setConfirmState(null);
     if (st?.action) await st.action();
+  };
+
+  // 恢复出厂设置：清设置 + 清 OAuth 配置（RPC 端也强制校验 confirm）
+  const doFactoryReset = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await call(POCKET_ENDPOINTS.pocketReset, { confirm: true });
+      setStatus(next);
+      applyMobileRightbarSetting(next.mobileRightbarEnabled);
+      showToast(t('resetDone'));
+    } catch (err) {
+      setError(err.message);
+      showToast(t('resetFailed'));
+    } finally {
+      setBusy(false);
+    }
   };
 
   // iOS 风格小开关（手机端右边栏）
@@ -460,28 +458,17 @@ function PocketSettingsTab({ rpcCall, t }) {
     h('div', { style: styles.block },
       h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 } },
         h('span', { style: { fontWeight: 600, fontSize: 13 } }, t('resetFactory')),
-        h('button', { style: { ...styles.btn, height: 28, padding: '0 12px', fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' }, onClick: () => setResetOpen(true) }, t('resetGo')),
+        h('button', { style: { ...styles.btn, height: 28, padding: '0 12px', fontSize: 12, color: 'var(--dsw-alias-state-error-primary,#dc2626)' }, onClick: () => openConfirm(t('resetTitle'), t('resetBody'), t('resetConfirm'), true, doFactoryReset) }, t('resetGo')),
       ),
       h('div', { style: { ...styles.muted, marginTop: 6 } }, t('resetIntro')),
     ),
 
-    // 恢复出厂设置确认弹框
-    resetOpen ? h('div', { style: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } },
-      h('div', { style: { background: 'var(--dsw-alias-bg-layer-1,#fff)', borderRadius: 12, maxWidth: 440, width: '100%', padding: '20px 22px', boxShadow: '0 8px 32px rgba(0,0,0,.18)' } },
-        h('div', { style: { fontWeight: 600, fontSize: 15, color: 'var(--dsw-alias-state-warn-primary,#b45309)', marginBottom: 10 } }, t('resetTitle')),
-        h('div', { style: { fontSize: 13, lineHeight: 1.7, color: 'var(--dsw-alias-label-primary,inherit)', whiteSpace: 'pre-line' } }, t('resetBody')),
-        h('div', { style: { display: 'flex', gap: 8, marginTop: 16 } },
-          h('button', { style: { ...styles.btn, flex: 1 }, onClick: () => setResetOpen(false) }, t('cancel')),
-          h('button', { style: { ...styles.primary, flex: 1, background: 'var(--dsh-alias-state-error-primary,#dc2626)' }, onClick: doFactoryReset }, t('resetConfirm')),
-        ),
-      ),
-    ) : null,
-
-    // 通用确认弹框（登出所有设备 / 解除绑定）
+    // 通用确认弹框（恢复出厂 / 登出所有设备 / 解除绑定）
     confirmState ? h('div', { style: { position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 } },
       h('div', { style: { background: 'var(--dsw-alias-bg-layer-1,#fff)', borderRadius: 12, maxWidth: 420, width: '100%', padding: '20px 22px', boxShadow: '0 8px 32px rgba(0,0,0,.18)' } },
         h('div', { style: { fontWeight: 600, fontSize: 15, color: confirmState.danger ? 'var(--dsw-alias-state-warn-primary,#b45309)' : 'var(--dsw-alias-brand-primary,#4f6ef7)', marginBottom: 10 } }, confirmState.title),
-        h('div', { style: { fontSize: 13, lineHeight: 1.7, color: 'var(--dsw-alias-label-primary,inherit)' } }, confirmState.body),
+        // whiteSpace: pre-line —— 恢复出厂的说明文案带换行（①②③ 分条），要原样保留
+        h('div', { style: { fontSize: 13, lineHeight: 1.7, color: 'var(--dsw-alias-label-primary,inherit)', whiteSpace: 'pre-line' } }, confirmState.body),
         h('div', { style: { display: 'flex', gap: 8, marginTop: 16 } },
           h('button', { style: { ...styles.btn, flex: 1 }, onClick: () => setConfirmState(null) }, t('cancel')),
           h('button', { style: { ...styles.primary, flex: 1, ...(confirmState.danger ? { background: 'var(--dsh-alias-state-error-primary,#dc2626)' } : {}) }, onClick: runConfirmed }, confirmState.confirmLabel),
@@ -540,4 +527,4 @@ export function apply(ctx) {
   );
 }
 
-export { name, inject, redactStatus };
+export { name, inject };

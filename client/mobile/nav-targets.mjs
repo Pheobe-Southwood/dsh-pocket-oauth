@@ -41,7 +41,7 @@ export const NAV_TARGETS = [
  * 不能按导航处理，否则抽屉一关，刚弹出的菜单跟着没了。
  * @type {string}
  */
-export const NAV_EXCLUDE = '[class*="sessionRow"] button'
+const NAV_EXCLUDE = '[class*="sessionRow"] button'
 
 /**
  * 浮层（portal 到 body 的下拉菜单 / 弹窗）。
@@ -55,7 +55,7 @@ export const NAV_EXCLUDE = '[class*="sessionRow"] button'
  *
  * @type {string}
  */
-export const OVERLAY_SELECTOR = [
+const OVERLAY_SELECTOR = [
   '[role="menu"]',
   '[role="listbox"]',
   '[role="dialog"]',

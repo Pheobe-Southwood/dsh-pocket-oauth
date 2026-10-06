@@ -6,7 +6,10 @@ import { build } from 'esbuild';
 
 const sourceDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(sourceDir, '..');
-const outputPath = resolve(packageRoot, 'client/client.js');
+// 产物路径可用环境变量覆盖（测试用它构建到临时目录做「源码 ↔ 产物」一致性校验，不碰工作区）。
+const outputPath = process.env.DSH_POCKET_CLIENT_OUT
+  ? resolve(process.env.DSH_POCKET_CLIENT_OUT)
+  : resolve(packageRoot, 'client/client.js');
 const loaderId = process.env.DSH_POCKET_CLIENT_ID ?? 'dsh-pocket';
 
 const result = await build({

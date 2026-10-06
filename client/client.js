@@ -33,8 +33,7 @@ var index_exports = {};
 __export(index_exports, {
   apply: () => apply,
   inject: () => inject,
-  name: () => name,
-  redactStatus: () => redactStatus
+  name: () => name
 });
 module.exports = __toCommonJS(index_exports);
 var import_react2 = require("react");
@@ -98,28 +97,6 @@ function fallbackKind(origin) {
   }
 }
 var ORIGIN_KINDS = /* @__PURE__ */ new Set(["local", "lan", "public"]);
-function redactStatus(s) {
-  return {
-    proxyRunning: s?.proxyRunning === true,
-    proxyPort: s?.proxyPort ?? null,
-    dshPort: s?.dshPort ?? null,
-    lanCandidates: Array.isArray(s?.lanCandidates) ? s.lanCandidates : [],
-    oauth: {
-      // 鉴权方（Gitee / GitHub）：缺省/非法一律按 gitee 解释（与后端 readOAuthConfig 一致）
-      provider: s?.oauth?.provider === "github" ? "github" : "gitee",
-      configured: s?.oauth?.configured === true,
-      callbackOrigins: Array.isArray(s?.oauth?.callbackOrigins) ? s.oauth.callbackOrigins : [],
-      bound: s?.oauth?.bound === true,
-      boundLogin: s?.oauth?.boundLogin ?? null
-    },
-    originQrs: Array.isArray(s?.originQrs) ? s.originQrs.filter((o) => o && typeof o.origin === "string").map((o) => ({
-      origin: o.origin,
-      // 展示分组（local/lan/public）：服务端没给（旧版本）时按 host 兜底推断
-      kind: ORIGIN_KINDS.has(o.kind) ? o.kind : fallbackKind(o.origin),
-      qr: o.qr ?? null
-    })) : []
-  };
-}
 async function copyText(text) {
   try {
     if (navigator.clipboard?.writeText) {
@@ -2246,23 +2223,6 @@ function PocketSettingsTab({ rpcCall, t }) {
       setUpdateInfo((u) => ({ ...u, updating: false, result: "fail", output: err.message }));
     }
   };
-  const [resetOpen, setResetOpen] = (0, import_react2.useState)(false);
-  const doFactoryReset = async () => {
-    setResetOpen(false);
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await call(POCKET_ENDPOINTS.pocketReset, { confirm: true });
-      setStatus(next);
-      applyMobileRightbarSetting(next.mobileRightbarEnabled);
-      showToast(t("resetDone"));
-    } catch (err) {
-      setError(err.message);
-      showToast(t("resetFailed"));
-    } finally {
-      setBusy(false);
-    }
-  };
   const setMobileRightbar = async (on) => {
     try {
       const r = await call(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on });
@@ -2318,6 +2278,21 @@ function PocketSettingsTab({ rpcCall, t }) {
     const st = confirmState;
     setConfirmState(null);
     if (st?.action) await st.action();
+  };
+  const doFactoryReset = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await call(POCKET_ENDPOINTS.pocketReset, { confirm: true });
+      setStatus(next);
+      applyMobileRightbarSetting(next.mobileRightbarEnabled);
+      showToast(t("resetDone"));
+    } catch (err) {
+      setError(err.message);
+      showToast(t("resetFailed"));
+    } finally {
+      setBusy(false);
+    }
   };
   const Switch = (on, onClick) => (0, import_react2.createElement)("button", {
     role: "switch",
@@ -2534,28 +2509,11 @@ function PocketSettingsTab({ rpcCall, t }) {
         "div",
         { style: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 } },
         (0, import_react2.createElement)("span", { style: { fontWeight: 600, fontSize: 13 } }, t("resetFactory")),
-        (0, import_react2.createElement)("button", { style: { ...styles.btn, height: 28, padding: "0 12px", fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }, onClick: () => setResetOpen(true) }, t("resetGo"))
+        (0, import_react2.createElement)("button", { style: { ...styles.btn, height: 28, padding: "0 12px", fontSize: 12, color: "var(--dsw-alias-state-error-primary,#dc2626)" }, onClick: () => openConfirm(t("resetTitle"), t("resetBody"), t("resetConfirm"), true, doFactoryReset) }, t("resetGo"))
       ),
       (0, import_react2.createElement)("div", { style: { ...styles.muted, marginTop: 6 } }, t("resetIntro"))
     ),
-    // 恢复出厂设置确认弹框
-    resetOpen ? (0, import_react2.createElement)(
-      "div",
-      { style: { position: "fixed", inset: 0, zIndex: 1e4, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
-      (0, import_react2.createElement)(
-        "div",
-        { style: { background: "var(--dsw-alias-bg-layer-1,#fff)", borderRadius: 12, maxWidth: 440, width: "100%", padding: "20px 22px", boxShadow: "0 8px 32px rgba(0,0,0,.18)" } },
-        (0, import_react2.createElement)("div", { style: { fontWeight: 600, fontSize: 15, color: "var(--dsw-alias-state-warn-primary,#b45309)", marginBottom: 10 } }, t("resetTitle")),
-        (0, import_react2.createElement)("div", { style: { fontSize: 13, lineHeight: 1.7, color: "var(--dsw-alias-label-primary,inherit)", whiteSpace: "pre-line" } }, t("resetBody")),
-        (0, import_react2.createElement)(
-          "div",
-          { style: { display: "flex", gap: 8, marginTop: 16 } },
-          (0, import_react2.createElement)("button", { style: { ...styles.btn, flex: 1 }, onClick: () => setResetOpen(false) }, t("cancel")),
-          (0, import_react2.createElement)("button", { style: { ...styles.primary, flex: 1, background: "var(--dsh-alias-state-error-primary,#dc2626)" }, onClick: doFactoryReset }, t("resetConfirm"))
-        )
-      )
-    ) : null,
-    // 通用确认弹框（登出所有设备 / 解除绑定）
+    // 通用确认弹框（恢复出厂 / 登出所有设备 / 解除绑定）
     confirmState ? (0, import_react2.createElement)(
       "div",
       { style: { position: "fixed", inset: 0, zIndex: 1e4, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 } },
@@ -2563,7 +2521,8 @@ function PocketSettingsTab({ rpcCall, t }) {
         "div",
         { style: { background: "var(--dsw-alias-bg-layer-1,#fff)", borderRadius: 12, maxWidth: 420, width: "100%", padding: "20px 22px", boxShadow: "0 8px 32px rgba(0,0,0,.18)" } },
         (0, import_react2.createElement)("div", { style: { fontWeight: 600, fontSize: 15, color: confirmState.danger ? "var(--dsw-alias-state-warn-primary,#b45309)" : "var(--dsw-alias-brand-primary,#4f6ef7)", marginBottom: 10 } }, confirmState.title),
-        (0, import_react2.createElement)("div", { style: { fontSize: 13, lineHeight: 1.7, color: "var(--dsw-alias-label-primary,inherit)" } }, confirmState.body),
+        // whiteSpace: pre-line —— 恢复出厂的说明文案带换行（①②③ 分条），要原样保留
+        (0, import_react2.createElement)("div", { style: { fontSize: 13, lineHeight: 1.7, color: "var(--dsw-alias-label-primary,inherit)", whiteSpace: "pre-line" } }, confirmState.body),
         (0, import_react2.createElement)(
           "div",
           { style: { display: "flex", gap: 8, marginTop: 16 } },

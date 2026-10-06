@@ -33,14 +33,3 @@ export function persistLayoutFromUrl(urlValue) {
     return '';
   }
 }
-
-/** 读 localStorage 当前的 layout 值（'desktop' | 'mobile' | ''）。 */
-export function readStoredLayout() {
-  if (typeof localStorage === 'undefined') return '';
-  try {
-    const v = localStorage.getItem('dsh-pocket.layout');
-    return v === 'desktop' || v === 'mobile' ? v : '';
-  } catch {
-    return '';
-  }
-}

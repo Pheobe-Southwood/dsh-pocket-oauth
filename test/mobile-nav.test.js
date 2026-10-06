@@ -6,10 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const {
   DRAWER_SELECTOR,
-  TOGGLE_SELECTOR,
   NAV_TARGETS,
-  NAV_EXCLUDE,
-  OVERLAY_SELECTOR,
   navTargetFor,
   isOverlayTap,
 } = await import('../client/mobile/nav-targets.mjs');
@@ -40,7 +37,7 @@ test('导航选择器覆盖当前与旧一代侧边栏的行类名', () => {
   assert.match(NAV_TARGETS, /data-dsh-taskboard-entry/);
   assert.match(NAV_TARGETS, /data-dsh-ssh-entry/);
   assert.match(NAV_TARGETS, /data-mobile-nav="files"/);
-  assert.match(NAV_EXCLUDE, /sessionRow/, '行内 kebab 按钮');
+  assert.equal(navTargetFor(stub('[class*="sessionRow"] button')), null, '行内 kebab 按钮');
 });
 
 test('工作区行（projectRow）按折叠开关处理，不算导航 —— issue #72', () => {
@@ -72,10 +69,9 @@ test('空目标 / 非元素目标安全降级', () => {
 });
 
 test('浮层内的点击被识别为 overlay（不该关抽屉）—— issue #72', () => {
-  assert.match(OVERLAY_SELECTOR, /role="menu"/);
-  assert.match(OVERLAY_SELECTOR, /role="listbox"/);
-  assert.match(OVERLAY_SELECTOR, /role="dialog"/);
   assert.equal(isOverlayTap(stub('[role="menu"]')), true);
+  assert.equal(isOverlayTap(stub('[role="listbox"]')), true);
+  assert.equal(isOverlayTap(stub('[role="dialog"]')), true);
   assert.equal(isOverlayTap(stub('[data-radix-popper-content-wrapper]')), true);
   // 抽屉里的普通行、页面空白处都不是浮层
   assert.equal(isOverlayTap(stub('[class*="sessionRow"]')), false);
@@ -85,7 +81,6 @@ test('浮层内的点击被识别为 overlay（不该关抽屉）—— issue #7
 test('选择器常量与 MobileNavOverlay 的用法保持一致', () => {
   const src = readFileSync(new URL('../client/mobile/MobileNavOverlay.tsx', import.meta.url), 'utf8');
   assert.equal(DRAWER_SELECTOR, '[data-mobile-nav="frame"] > :first-child');
-  assert.equal(TOGGLE_SELECTOR, '[data-mobile-nav="toggle"]');
   assert.ok(
     src.includes("document.querySelector<HTMLElement>(DRAWER_SELECTOR)"),
     '抽屉查询应复用 DRAWER_SELECTOR，避免与 CSS 里的选择器漂移',
