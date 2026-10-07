@@ -186,7 +186,6 @@ test('RPC：status（含 OAuth 视图）/ 未知端点', async () => {
   installPocketRpc({ connection: conn }, {
     service,
     getOAuthView: () => ({ configured: true, callbackOrigins: ['https://pocket.example.com'], bound: true, boundLogin: 'alice' }),
-    getMobileRightbar: () => true,
     log: { error() {}, warn() {} },
   });
 
@@ -238,32 +237,8 @@ test('RPC：oauth.rotateSession / oauth.unbind', async () => {
   await service.dispose();
 });
 
-test('RPC：mobile.rightbar.setEnabled 默认开启并回写到 status', async () => {
-  const internals = stubInternals();
-  let enabled = true;
-  const service = createPocketService({ dshPort: 3080, port: 3081, internals });
-  const conn = fakeCtxConnection();
-  installPocketRpc({ connection: conn }, {
-    service,
-    getMobileRightbar: () => enabled,
-    setMobileRightbar: (on) => { enabled = on === true; },
-    log: { error() {}, warn() {} },
-  });
-
-  const initial = await conn.handler(POCKET_ENDPOINTS.status, {});
-  assert.equal(initial.ok, true);
-  assert.equal(initial.value.mobileRightbarEnabled, true, '默认开启');
-
-  const off = await conn.handler(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on: false });
-  assert.equal(off.ok, true);
-  assert.equal(off.value.mobileRightbarEnabled, false, '关闭成功');
-
-  const on = await conn.handler(POCKET_ENDPOINTS.mobileRightbarSetEnabled, { on: true });
-  assert.equal(on.ok, true);
-  assert.equal(on.value.mobileRightbarEnabled, true, '可再次开启');
-
-  await service.dispose();
-});
+// 手机端右边栏开关的 RPC 用例已随旧移动端适配删除（端点 mobile.rightbar.setEnabled 不复存在）；
+// 旧端点必须继续报 bad-request，见 test/plugin-home.test.js「组件边界」用例。
 
 test('RPC：status 携带重启提示（restartNotice）', async () => {
   const internals = stubInternals();
